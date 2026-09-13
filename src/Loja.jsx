@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Lock, Plus, ShoppingBag, X, Package, ArrowLeft, Trash2 } from "lucide-react";
 import { db, auth } from "./firebase";
@@ -115,7 +114,17 @@ export default function Loja() {
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 
   const handleLogoClick = () => {
-    setView("acesso");
+    if (isOwner) {
+      setView("loja");
+      return;
+    }
+    const now = Date.now();
+    const recent = [...logoClicks, now].filter((t) => now - t < 1500);
+    setLogoClicks(recent);
+    if (recent.length >= 5) {
+      setLogoClicks([]);
+      setView("acesso");
+    }
   };
 
   const tryLogin = async () => {
@@ -143,7 +152,7 @@ export default function Loja() {
       `}</style>
 
       <header style={styles.header}>
-        <button onClick={() => setView("loja")} className="display" style={styles.logo}>
+        <button onClick={handleLogoClick} className="display" style={styles.logo}>
           {storeName}
         </button>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -151,13 +160,9 @@ export default function Loja() {
             <ShoppingBag size={18} color="#EDEDED" />
             {cart.length > 0 && <span style={styles.badge}>{cart.reduce((s, i) => s + i.qty, 0)}</span>}
           </button>
-          {isOwner ? (
+          {isOwner && (
             <button style={styles.iconBtn} onClick={() => setView("pedidos")}>
               <Package size={18} color="#EDEDED" />
-            </button>
-          ) : (
-            <button style={styles.iconBtn} onClick={handleLogoClick}>
-              <Lock size={18} color="#EDEDED" />
             </button>
           )}
         </div>
@@ -236,29 +241,45 @@ function StoreFront({ products, onAdd }) {
       <div style={styles.emptyState}>
         <h2 className="display" style={{ fontSize: 26, marginBottom: 10 }}>A loja ainda não tem produtos</h2>
         <p style={{ color: "#A8A8B0", maxWidth: 380, lineHeight: 1.6 }}>
-          Clique no ícone de cadeado, no canto superior direito, pra entrar como dono.
+          Clique 5 vezes rápido no nome da loja pra entrar como dono e cadastrar o primeiro produto.
         </p>
       </div>
     );
   }
+
+  const semCategoria = "Outros";
+  const grupos = {};
+  products.forEach((p) => {
+    const cat = p.category && p.category.trim() ? p.category.trim() : semCategoria;
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push(p);
+  });
+
   return (
-    <div style={styles.grid}>
-      {products.map((p) => (
-        <div key={p.id} style={styles.card}>
-          <div style={styles.cardImg}>
-            {p.imageUrl ? (
-              <img src={p.imageUrl} alt={p.name} style={styles.cardImgTag} />
-            ) : (
-              <span style={{ fontSize: 32, opacity: 0.35 }}>📦</span>
-            )}
-          </div>
-          <div style={{ padding: "14px 16px 16px" }}>
-            <h3 className="display" style={{ fontSize: 17, marginBottom: 4 }}>{p.name}</h3>
-            <p style={{ color: "#8A8A93", fontSize: 13.5, marginBottom: 10, lineHeight: 1.5 }}>{p.description}</p>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 600, fontSize: 15 }}>{currency(p.price)}</span>
-              <button style={styles.smallBtn} onClick={() => onAdd(p)}>Adicionar</button>
-            </div>
+    <div>
+      {Object.keys(grupos).map((categoria) => (
+        <div key={categoria} style={{ marginBottom: 40 }}>
+          <h2 className="display" style={{ fontSize: 22, marginBottom: 16 }}>{categoria}</h2>
+          <div style={styles.grid}>
+            {grupos[categoria].map((p) => (
+              <div key={p.id} style={styles.card}>
+                <div style={styles.cardImg}>
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.name} style={styles.cardImgTag} />
+                  ) : (
+                    <span style={{ fontSize: 32, opacity: 0.35 }}>📦</span>
+                  )}
+                </div>
+                <div style={{ padding: "14px 16px 16px" }}>
+                  <h3 className="display" style={{ fontSize: 17, marginBottom: 4 }}>{p.name}</h3>
+                  <p style={{ color: "#8A8A93", fontSize: 13.5, marginBottom: 10, lineHeight: 1.5 }}>{p.description}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{currency(p.price)}</span>
+                    <button style={styles.smallBtn} onClick={() => onAdd(p)}>Adicionar</button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ))}
@@ -313,12 +334,13 @@ function OwnerPanel({ products, storeName, onSaveName, onAddProduct, onRemovePro
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [category, setCategory] = useState("");
   const [editingName, setEditingName] = useState(storeName);
 
   const submit = () => {
     if (!name || !price) return;
-    onAddProduct({ name, price: parseFloat(price), description, imageUrl });
-    setName(""); setPrice(""); setDescription(""); setImageUrl("");
+    onAddProduct({ name, price: parseFloat(price), description, imageUrl, category });
+    setName(""); setPrice(""); setDescription(""); setImageUrl(""); setCategory("");
   };
 
   return (
@@ -342,6 +364,7 @@ function OwnerPanel({ products, storeName, onSaveName, onAddProduct, onRemovePro
       <input style={{ ...styles.input, marginTop: 10 }} placeholder="Preço (ex: 49.90)" value={price} onChange={(e) => setPrice(e.target.value)} />
       <textarea style={{ ...styles.input, marginTop: 10, minHeight: 60, resize: "vertical" }} placeholder="Descrição curta" value={description} onChange={(e) => setDescription(e.target.value)} />
       <input style={{ ...styles.input, marginTop: 10 }} placeholder="Link da imagem (ex: https://...)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+      <input style={{ ...styles.input, marginTop: 10 }} placeholder="Categoria (ex: Camisetas, Calças)" value={category} onChange={(e) => setCategory(e.target.value)} />
       <button style={{ ...styles.primaryBtn, marginTop: 12 }} onClick={submit}>
         <Plus size={15} style={{ verticalAlign: "middle", marginRight: 4 }} />
         Adicionar produto

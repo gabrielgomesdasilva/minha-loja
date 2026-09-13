@@ -401,7 +401,7 @@ function OrdersPanel({ orders, onUpdateStatus, onBack }) {
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "#141416", color: "#EDEDED", padding: "0 0 60px" },
+  page: { minHeight: "100vh", background: "#141416", color: "#EDEDED", padding: "0 0 60px", backgroundImage: "linear-gradient(rgba(20,20,22,0.88), rgba(20,20,22,0.97)), url('/fundo-gmstyle.jpg')", backgroundSize: "cover", backgroundPosition: "top center", backgroundAttachment: "fixed" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 24px", borderBottom: "1px solid #232326", position: "sticky", top: 0, background: "#141416", zIndex: 10 },
   logo: { background: "none", border: "none", color: "#EDEDED", fontSize: 20, padding: 0 },
   iconBtn: { position: "relative", background: "#1F1F22", border: "1px solid #2A2A2E", borderRadius: 8, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" },
